@@ -176,8 +176,10 @@ export class DataCollector {
         const totalReplies = twitterData.tweets.reduce((sum, tweet) => sum + tweet.public_metrics.reply_count, 0);
         const totalQuotes = twitterData.tweets.reduce((sum, tweet) => sum + tweet.public_metrics.quote_count, 0);
 
+        // Calculate engagement rate and ensure it's within valid range (0-1)
+        const totalEngagements = totalLikes + totalRetweets + totalReplies + totalQuotes;
         const engagementRate = twitterData.tweets.length > 0 ? 
-          (totalLikes + totalRetweets + totalReplies + totalQuotes) / twitterData.tweets.length : 0;
+          Math.min(totalEngagements / twitterData.tweets.length / 100, 1) : 0; // Normalize to 0-1 range
 
         // Determine if it's a holiday or major event
         const { isHoliday, holidayName, majorEvent } = await this.checkForEvents(new Date());
@@ -191,7 +193,7 @@ export class DataCollector {
           totalRetweets,
           totalReplies,
           uniqueUsers: twitterData.users.length,
-          avgSentiment: twitterData.sentiment,
+          avgSentiment: Math.max(0, Math.min(1, twitterData.sentiment)), // Ensure 0-1 range
           engagementRate,
           trendingHashtags: twitterData.topics,
           topTopics: twitterData.topics,
@@ -264,7 +266,7 @@ export class DataCollector {
     }
   }
 
-  // Update location activity heatmap
+  // Update location activity heatmap with upsert logic
   async updateLocationActivityHeatmap(lat: number, lng: number, locationName: string): Promise<void> {
     try {
       // Check if the table exists before trying to call the function
@@ -277,30 +279,66 @@ export class DataCollector {
         return;
       }
       
-      // Insert directly instead of using the function
       const now = new Date();
-      const { error } = await supabase
+      const date = now.toISOString().split('T')[0];
+      const hour = now.getHours();
+      
+      // First, try to find existing record
+      const { data: existingRecord, error: selectError } = await supabase
         .from('location_activity_heatmap')
-        .insert({
-          coordinates: `(${lng},${lat})`,
-          location_name: locationName,
-          date: now.toISOString().split('T')[0],
-          hour: now.getHours(),
-          total_interactions: 1,
-          unique_users: 1,
-          ai_queries: 0,
-          voice_interactions: 0,
-          text_interactions: 0,
-          avg_session_duration: 30,
-          current_active_users: 1,
-          created_at: now.toISOString(),
-          updated_at: now.toISOString()
-        });
+        .select('*')
+        .eq('location_name', locationName)
+        .eq('date', date)
+        .eq('hour', hour)
+        .single();
 
-      if (error) {
-        console.error('Error updating location activity heatmap:', error);
+      if (selectError && selectError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Error checking existing location activity record:', selectError);
+        return;
+      }
+
+      if (existingRecord) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('location_activity_heatmap')
+          .update({
+            total_interactions: existingRecord.total_interactions + 1,
+            unique_users: existingRecord.unique_users + 1,
+            current_active_users: existingRecord.current_active_users + 1,
+            updated_at: now.toISOString()
+          })
+          .eq('id', existingRecord.id);
+
+        if (updateError) {
+          console.error('Error updating location activity heatmap:', updateError);
+        } else {
+          console.log(`✅ Updated location activity for ${locationName}`);
+        }
       } else {
-        console.log(`✅ Updated location activity for ${locationName}`);
+        // Insert new record
+        const { error: insertError } = await supabase
+          .from('location_activity_heatmap')
+          .insert({
+            coordinates: `(${lng},${lat})`,
+            location_name: locationName,
+            date: date,
+            hour: hour,
+            total_interactions: 1,
+            unique_users: 1,
+            ai_queries: 0,
+            voice_interactions: 0,
+            text_interactions: 0,
+            avg_session_duration: 30,
+            current_active_users: 1,
+            created_at: now.toISOString(),
+            updated_at: now.toISOString()
+          });
+
+        if (insertError) {
+          console.error('Error inserting location activity heatmap:', insertError);
+        } else {
+          console.log(`✅ Created new location activity record for ${locationName}`);
+        }
       }
     } catch (error) {
       console.error('Error updating location activity heatmap:', error);
@@ -346,8 +384,8 @@ export class DataCollector {
           total_retweets: data.totalRetweets,
           total_replies: data.totalReplies,
           unique_users: data.uniqueUsers,
-          avg_sentiment: data.avgSentiment,
-          engagement_rate: data.engagementRate,
+          avg_sentiment: Math.max(0, Math.min(1, data.avgSentiment)), // Ensure 0-1 range
+          engagement_rate: Math.max(0, Math.min(1, data.engagementRate)), // Ensure 0-1 range
           trending_hashtags: data.trendingHashtags,
           top_topics: data.topTopics,
           major_event_nearby: !!majorEvent,
@@ -392,7 +430,7 @@ export class DataCollector {
           latency: data.latency,
           jitter: data.jitter,
           device_type: data.deviceType,
-          reliability_score: data.reliabilityScore,
+          reliability_score: Math.max(0, Math.min(1, data.reliabilityScore)), // Ensure 0-1 range
           test_timestamp: now.toISOString(),
           hour_of_day: now.getHours(),
           day_of_week: now.getDay(),
@@ -569,7 +607,7 @@ export class DataCollector {
           processing_time_ms: data.processingTimeMs,
           model_used: data.modelUsed,
           api_cost_usd: data.apiCostUsd,
-          user_satisfaction: data.userSatisfaction,
+          user_satisfaction: data.userSatisfaction ? Math.max(0, Math.min(1, data.userSatisfaction)) : null, // Ensure 0-1 range
           user_tier: data.userTier,
           timestamp: now.toISOString(),
           hour_of_day: now.getHours(),
