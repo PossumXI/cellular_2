@@ -1,9 +1,10 @@
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
-const path = require('path');
+import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
 
 // Load environment variables
-require('dotenv').config();
+dotenv.config();
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,7 +22,7 @@ async function runMigration() {
   
   try {
     // Read the migration file
-    const migrationPath = path.join(__dirname, '..', 'supabase', 'migrations', 'create_analytics_tables.sql');
+    const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', 'create_analytics_tables.sql');
     
     if (!fs.existsSync(migrationPath)) {
       console.error('❌ Migration file not found:', migrationPath);
