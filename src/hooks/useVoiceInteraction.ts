@@ -6,6 +6,7 @@ import { algorandService } from '../lib/apis/algorand';
 import { authService } from '../lib/auth/authService';
 import { useAuthStore } from '../store/authStore';
 import { newsService } from '../lib/apis/news';
+import { dataCollector } from '../lib/analytics/dataCollector';
 import toast from 'react-hot-toast';
 
 export function useVoiceInteraction() {
@@ -16,6 +17,7 @@ export function useVoiceInteraction() {
   const speakWithLocation = async (location: LocationCell, userQuery: string = '') => {
     if (isPlaying || isGenerating) return;
 
+    const startTime = Date.now();
     setIsGenerating(true);
 
     try {
@@ -46,6 +48,8 @@ export function useVoiceInteraction() {
         newsData // Pass news data to the AI
       );
 
+      const processingTime = Date.now() - startTime;
+
       // Store interaction in blockchain memory (this is simulated)
       try {
         await algorandService.storeLocationMemory(location.id, {
@@ -58,6 +62,21 @@ export function useVoiceInteraction() {
         console.warn('Blockchain storage failed (simulated):', blockchainError);
         // Continue with voice synthesis even if blockchain storage fails
       }
+
+      // Log AI interaction for analytics
+      await dataCollector.logAIInteraction({
+        userId: user?.id,
+        sessionId: `session_${Date.now()}`,
+        coordinates: location.coordinates,
+        locationName: location.name,
+        interactionType: 'voice',
+        queryText: query,
+        responseText: response,
+        processingTimeMs: processingTime,
+        modelUsed: 'gemini-1.5-flash',
+        apiCostUsd: 0.001, // Estimated cost
+        userTier: user?.subscription_tier || 'free'
+      });
 
       // Increment daily usage for authenticated users
       if (user) {
