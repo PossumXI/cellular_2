@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, Settings, CreditCard, BarChart3, LogOut, Crown } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../lib/auth/authService';
-import AnalyticsDashboard from '../Analytics/AnalyticsDashboard';
+import EnhancedAnalyticsDashboard from '../Analytics/EnhancedAnalyticsDashboard';
 import toast from 'react-hot-toast';
 
 interface UserMenuProps {
@@ -93,7 +93,7 @@ export default function UserMenu({ onOpenPricing }: UserMenuProps) {
                   className="w-full flex items-center gap-3 p-3 text-left hover:bg-surface-mid rounded-lg transition-colors"
                 >
                   <BarChart3 size={16} className="text-accent-neural" />
-                  <span className="text-sm text-gray-300">Analytics Dashboard</span>
+                  <span className="text-sm text-gray-300">Enhanced Analytics</span>
                 </button>
 
                 {user.subscription_tier === 'free' && (
@@ -148,8 +148,8 @@ export default function UserMenu({ onOpenPricing }: UserMenuProps) {
         </AnimatePresence>
       </div>
 
-      {/* Analytics Dashboard Modal */}
-      <AnalyticsDashboard
+      {/* Enhanced Analytics Dashboard Modal */}
+      <EnhancedAnalyticsDashboard
         isOpen={analyticsOpen}
         onClose={() => setAnalyticsOpen(false)}
       />

@@ -21,6 +21,7 @@ import AuthModal from './components/Auth/AuthModal';
 import PricingModal from './components/Pricing/PricingModal';
 import UserMenu from './components/UI/UserMenu';
 import BoltAttribution from './components/UI/BoltAttribution';
+import EnhancedAnalyticsDashboard from './components/Analytics/EnhancedAnalyticsDashboard';
 
 import { useLocationData } from './hooks/useLocationData';
 import { useAuthStore } from './store/authStore';
@@ -29,6 +30,7 @@ import { authService } from './lib/auth/authService';
 import { cellularContract } from './lib/blockchain/contracts';
 import { geocodingService } from './lib/apis/geocoding';
 import { telefonicaGatewayService } from './lib/apis/telefonicaGateway';
+import { dataCollector } from './lib/analytics/dataCollector';
 
 function App() {
   const [selectedCoordinates, setSelectedCoordinates] = useState<[number, number] | null>(null);
@@ -57,6 +59,9 @@ function App() {
   const [cameraTarget, setCameraTarget] = useState<Vector3 | undefined>();
   const [currentZoom, setCurrentZoom] = useState(10);
   const controlsRef = useRef<any>();
+
+  // Analytics dashboard
+  const [analyticsDashboardOpen, setAnalyticsDashboardOpen] = useState(false);
 
   const { user, setUser, setLoading } = useAuthStore();
   const { location, loading, error } = useLocationData(selectedCoordinates);
@@ -154,6 +159,15 @@ function App() {
           console.log('✅ Telefonica Open Gateway initialized');
         } catch (error) {
           console.warn('⚠️ Telefonica Open Gateway initialization failed:', error.message);
+        }
+
+        // Initialize data collection for analytics
+        try {
+          console.log('📊 Initializing data collection for analytics...');
+          dataCollector.startCollection(30); // Collect data every 30 minutes
+          console.log('✅ Data collection initialized');
+        } catch (error) {
+          console.warn('⚠️ Data collection initialization failed:', error.message);
         }
 
         console.log('🎉 ItsEarth application initialized successfully');
@@ -469,6 +483,15 @@ function App() {
               🌉 Explore San Francisco
             </button>
           </div>
+          <div className="flex gap-4">
+            <button 
+              className="bg-transparent border border-accent-neural text-accent-neural px-4 py-2 rounded-full hover:bg-accent-neural/10 transition-colors"
+              onClick={() => setAnalyticsDashboardOpen(true)}
+            >
+              <BarChart3 size={16} className="inline mr-2" />
+              View Analytics Dashboard
+            </button>
+          </div>
           {networkStatus && (
             <div className="text-sm text-accent-neural">
               🌐 Powered by Cellular Network
@@ -540,6 +563,12 @@ function App() {
       <PricingModal
         isOpen={pricingModalOpen}
         onClose={() => setPricingModalOpen(false)}
+      />
+
+      {/* Enhanced Analytics Dashboard */}
+      <EnhancedAnalyticsDashboard
+        isOpen={analyticsDashboardOpen}
+        onClose={() => setAnalyticsDashboardOpen(false)}
       />
 
       {/* Bolt Attribution */}

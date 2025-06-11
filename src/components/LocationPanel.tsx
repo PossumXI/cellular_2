@@ -12,6 +12,7 @@ import NewsWidget from './NewsWidget/NewsWidget';
 import TwitterWidget from './TwitterWidget/TwitterWidget';
 import { SpeedTestResult } from '../lib/apis/speedtest';
 import { geocodingService } from '../lib/apis/geocoding';
+import { dataCollector } from '../lib/analytics/dataCollector';
 
 interface LocationPanelProps {
   location: LocationCell | null;
@@ -53,6 +54,18 @@ export default function LocationPanel({ location, onClose }: LocationPanelProps)
       });
     }
   }, [realtimeData, isStable]);
+
+  // Log location activity for analytics
+  useEffect(() => {
+    if (location) {
+      // Log location view in analytics
+      dataCollector.updateLocationActivityHeatmap(
+        location.coordinates[1], 
+        location.coordinates[0], 
+        location.name
+      );
+    }
+  }, [location]);
 
   if (!location) return null;
 
