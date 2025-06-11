@@ -64,13 +64,25 @@ class TwitterService {
     return !!this.apiKey && this.apiKey !== 'your_twitter_api_key_here' && this.apiKey.length > 10;
   }
 
-  private async getBearerToken(): Promise<string> {
-    if (this.bearerToken && this.bearerToken !== 'your_bearer_token_here') {
+  private validateBearerToken(): boolean {
+    return !!this.bearerToken && this.bearerToken !== 'your_bearer_token_here' && this.bearerToken.length > 10;
+  }
+
+  private async getBearerToken(): Promise<string | null> {
+    // First check if we have a valid bearer token configured
+    if (this.validateBearerToken()) {
       return this.bearerToken;
     }
 
+    // If no valid bearer token, check if we can get one via proxy
+    if (!this.validateApiKey()) {
+      console.warn('No valid Twitter API credentials configured');
+      return null;
+    }
+
     try {
-      // For production, we'll use a proxy to avoid CORS issues
+      // Try to get bearer token from proxy endpoint
+      // Note: This endpoint would need to be implemented as a Supabase Edge Function
       const response = await fetch('/api/twitter/token', {
         method: 'POST',
         headers: {
@@ -83,14 +95,15 @@ class TwitterService {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to get bearer token: ${response.status}`);
+        console.warn(`Twitter bearer token proxy not available (${response.status}). Using mock data.`);
+        return null;
       }
 
       const data = await response.json();
       return data.access_token;
     } catch (error) {
-      console.error('Error getting Twitter bearer token:', error);
-      throw error;
+      console.warn('Twitter bearer token proxy not available. Using mock data.');
+      return null;
     }
   }
 
@@ -186,14 +199,17 @@ class TwitterService {
   }
 
   async getLocationTweets(lat: number, lng: number, locationName?: string, radius: number = 25): Promise<TwitterResponse> {
-    if (!this.validateApiKey()) {
-      console.warn('Twitter API key not configured, using enhanced location-specific mock data');
-      return this.getLocationSpecificMockData(locationName, lat, lng);
-    }
-
     try {
-      console.log(`🐦 Fetching REAL tweets for location: ${locationName} (${lat}, ${lng}) within ${radius}km`);
+      console.log(`🐦 Attempting to fetch tweets for location: ${locationName} (${lat}, ${lng}) within ${radius}km`);
       
+      // Try to get bearer token
+      const bearerToken = await this.getBearerToken();
+      
+      if (!bearerToken) {
+        console.log('No valid Twitter bearer token available, using enhanced location-specific mock data');
+        return this.getLocationSpecificMockData(locationName, lat, lng);
+      }
+
       // Try multiple search strategies for better results
       const searchQueries = [];
       
@@ -215,8 +231,6 @@ class TwitterService {
       // Try each search query
       for (const query of searchQueries.slice(0, 2)) { // Limit to 2 queries to avoid rate limits
         try {
-          const bearerToken = await this.getBearerToken();
-          
           const params = new URLSearchParams({
             query: `${query} -is:retweet lang:en`,
             'tweet.fields': 'created_at,public_metrics,context_annotations,geo',
@@ -267,6 +281,8 @@ class TwitterService {
               allTweets = [...allTweets, ...tweets];
               allUsers = [...allUsers, ...users];
             }
+          } else {
+            console.warn(`Twitter API query "${query}" failed with status ${response.status}`);
           }
         } catch (queryError) {
           console.warn(`Query "${query}" failed:`, queryError);
@@ -300,21 +316,22 @@ class TwitterService {
         return this.getLocationSpecificMockData(locationName, lat, lng);
       }
     } catch (error: any) {
-      console.warn('Twitter API unavailable, using enhanced location-specific mock data:', error.message);
+      console.warn('Twitter API error, using enhanced location-specific mock data:', error.message);
       return this.getLocationSpecificMockData(locationName, lat, lng);
     }
   }
 
   async searchTweets(query: string, maxResults: number = 10): Promise<TwitterResponse> {
-    if (!this.validateApiKey()) {
-      console.warn('Twitter API key not configured, using mock data');
-      return this.getLocationSpecificMockData();
-    }
-
     try {
-      console.log(`🐦 Searching REAL tweets for: ${query}`);
+      console.log(`🐦 Searching tweets for: ${query}`);
       
+      // Try to get bearer token
       const bearerToken = await this.getBearerToken();
+      
+      if (!bearerToken) {
+        console.log('No valid Twitter bearer token available, using mock data');
+        return this.getLocationSpecificMockData();
+      }
       
       const params = new URLSearchParams({
         query: `${query} -is:retweet lang:en`,
@@ -332,7 +349,8 @@ class TwitterService {
       });
 
       if (!response.ok) {
-        throw new Error(`Twitter API error: ${response.status} ${response.statusText}`);
+        console.warn(`Twitter API error: ${response.status} ${response.statusText}. Using mock data.`);
+        return this.getLocationSpecificMockData();
       }
 
       const data = await response.json();
