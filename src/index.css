@@ -1,0 +1,493 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Living Earth Spectrum */
+  --primary-forest: #0A2F1F;
+  --primary-emerald: #00C896;
+  --primary-moss: #7CB342;
+  --primary-sage: #8FBC8F;
+
+  /* Digital Neural Network */
+  --accent-neural: #00FFAA;
+  --accent-pulse: #88FFCC;
+  --accent-glow: #CCFFEE;
+
+  /* Earth Atmosphere */
+  --surface-deep: #0D1B2A;
+  --surface-mid: #1B263B;
+  --surface-light: #2D3748;
+  --surface-air: #4A5568;
+
+  /* Typography Scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+  --text-7xl: 4.5rem;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--surface-deep);
+  color: #ffffff;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* Core Animation Keyframes */
+@keyframes breathe {
+  0%, 100% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 0 rgba(0, 255, 170, 0.4); 
+  }
+  50% { 
+    transform: scale(1.02); 
+    box-shadow: 0 0 0 10px rgba(0, 255, 170, 0); 
+  }
+}
+
+@keyframes neuralPulse {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+  50% { 
+    opacity: 0.6; 
+    transform: scale(1.2); 
+  }
+}
+
+@keyframes cellularPulse {
+  0%, 100% {
+    border-color: rgba(0, 255, 170, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 200, 150, 0.1);
+  }
+  50% {
+    border-color: rgba(0, 255, 170, 0.3);
+    box-shadow: 0 12px 48px rgba(0, 200, 150, 0.2);
+  }
+}
+
+@keyframes neuralGrid {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(50px, 50px); }
+}
+
+@keyframes floatParticle {
+  0% {
+    transform: translateY(100vh) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px) translateX(100px);
+    opacity: 0;
+  }
+}
+
+@keyframes analyticsGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 255, 170, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(0, 255, 170, 0.2);
+  }
+}
+
+@keyframes dataFlow {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Component Classes */
+.bio-nav {
+  backdrop-filter: blur(20px);
+  background: linear-gradient(135deg,
+    rgba(10, 47, 31, 0.8) 0%,
+    rgba(0, 200, 150, 0.1) 100%
+  );
+  border: 1px solid rgba(0, 255, 170, 0.2);
+  border-radius: 50px;
+  padding: 12px 32px;
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.bio-input {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 255, 170, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #1a1a1a;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.bio-input:focus {
+  outline: none;
+  border-color: rgba(0, 255, 170, 0.5);
+  box-shadow: 0 0 0 3px rgba(0, 255, 170, 0.1);
+  background: rgba(255, 255, 255, 1);
+}
+
+.bio-input::placeholder {
+  color: rgba(26, 26, 26, 0.6);
+}
+
+/* Ensure all input and textarea elements have dark text */
+input, textarea {
+  color: #1a1a1a !important;
+}
+
+input:focus, textarea:focus {
+  color: #1a1a1a !important;
+}
+
+/* Override any white text on inputs */
+input[type="text"], 
+input[type="email"], 
+input[type="password"], 
+input[type="number"],
+input[type="search"],
+textarea {
+  color: #1a1a1a !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+input[type="text"]:focus, 
+input[type="email"]:focus, 
+input[type="password"]:focus, 
+input[type="number"]:focus,
+input[type="search"]:focus,
+textarea:focus {
+  color: #1a1a1a !important;
+  background-color: rgba(255, 255, 255, 1) !important;
+}
+
+.synaptic-link {
+  position: relative;
+  color: var(--accent-neural);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 25px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.synaptic-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 25px;
+  background: linear-gradient(45deg, transparent, rgba(0, 255, 170, 0.1));
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.synaptic-link:hover::before {
+  opacity: 1;
+}
+
+.neural-button {
+  background: linear-gradient(135deg,
+    var(--primary-emerald) 0%,
+    var(--accent-neural) 100%
+  );
+  border: none;
+  border-radius: 50px;
+  padding: 16px 32px;
+  color: white;
+  font-weight: 600;
+  font-size: var(--text-lg);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.neural-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.3),
+    rgba(255, 255, 255, 0.1)
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.neural-button:hover::before {
+  transform: translateX(100%);
+}
+
+.neural-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 255, 170, 0.4);
+}
+
+.neural-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.location-cell {
+  background: linear-gradient(135deg,
+    rgba(13, 27, 42, 0.9) 0%,
+    rgba(45, 55, 72, 0.7) 100%
+  );
+  border: 1px solid rgba(0, 255, 170, 0.15);
+  border-radius: 24px;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  animation: cellularPulse 6s ease-in-out infinite;
+}
+
+.location-cell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(0, 255, 170, 0.1),
+    transparent
+  );
+  transition: left 0.8s;
+}
+
+.location-cell:hover::before {
+  left: 100%;
+}
+
+.neural-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-neural);
+  animation: neuralPulse 2s ease-in-out infinite;
+}
+
+.neural-grid-background {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 255, 170, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 170, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: neuralGrid 20s linear infinite;
+}
+
+.data-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--accent-neural);
+  border-radius: 50%;
+  animation: floatParticle 15s linear infinite;
+}
+
+/* Analytics Dashboard Styles */
+.analytics-card {
+  background: linear-gradient(135deg,
+    rgba(27, 38, 59, 0.8) 0%,
+    rgba(45, 55, 72, 0.6) 100%
+  );
+  border: 1px solid rgba(0, 255, 170, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  backdrop-filter: blur(10px);
+  animation: analyticsGlow 4s ease-in-out infinite;
+}
+
+.analytics-card:hover {
+  border-color: rgba(0, 255, 170, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 255, 170, 0.15);
+}
+
+.data-flow-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.data-flow-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(0, 255, 170, 0.4),
+    transparent
+  );
+  animation: dataFlow 2s ease-in-out infinite;
+}
+
+.metric-trend-up {
+  color: #10B981;
+}
+
+.metric-trend-down {
+  color: #EF4444;
+}
+
+.metric-trend-stable {
+  color: #6B7280;
+}
+
+/* Progress bars with neural styling */
+.neural-progress {
+  background: rgba(13, 27, 42, 0.8);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.neural-progress-bar {
+  background: linear-gradient(90deg,
+    var(--accent-neural) 0%,
+    var(--accent-pulse) 100%
+  );
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.neural-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: dataFlow 2s ease-in-out infinite;
+}
+
+/* Scrollbar styling for analytics */
+.analytics-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.analytics-scroll::-webkit-scrollbar-track {
+  background: rgba(13, 27, 42, 0.5);
+  border-radius: 3px;
+}
+
+.analytics-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 170, 0.3);
+  border-radius: 3px;
+}
+
+.analytics-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 170, 0.5);
+}
+
+/* Utility classes for text truncation */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .bio-nav {
+    padding: 8px 16px;
+    border-radius: 30px;
+  }
+  
+  .location-cell {
+    padding: 1.5rem;
+    border-radius: 16px;
+  }
+
+  .analytics-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .neural-button {
+    border: 2px solid var(--accent-neural);
+  }
+  
+  .bio-nav {
+    border-width: 2px;
+  }
+  
+  .analytics-card {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .neural-indicator,
+  .data-particle,
+  .neural-grid-background {
+    animation: none;
+  }
+  
+  .neural-button:hover {
+    transform: none;
+  }
+  
+  .analytics-card:hover {
+    transform: none;
+  }
+}

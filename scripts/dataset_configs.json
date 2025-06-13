@@ -1,0 +1,30 @@
+{
+  "network": {
+    "id": "global-network-performance",
+    "table": "network_performance_analytics",
+    "features": ["network_type", "signal_strength", "download_speed", "upload_speed", "latency"],
+    "target": "reliability_score",
+    "description": "Global network performance metrics including signal strength, speed, and latency."
+  },
+  "social": {
+    "id": "city-social-media-data",
+    "table": "social_engagement_analytics",
+    "features": ["total_posts", "total_likes", "total_retweets", "unique_users"],
+    "target": "avg_sentiment",
+    "description": "City-level social media data including post counts, engagement, and user numbers."
+  },
+  "location_activity": {
+    "id": "location-activity-patterns",
+    "table": "location_activity_heatmap",
+    "features": ["hour", "unique_users", "ai_queries", "voice_interactions"],
+    "target": "total_interactions",
+    "description": "Patterns of activity at various locations, including user interactions and AI queries."
+  },
+  "environmental": {
+    "id": "urban-environmental-sensors",
+    "table": "environmental_data",
+    "features": ["temperature", "humidity", "air_quality_index", "noise_level"],
+    "target": "pollution_level",
+    "description": "Data from urban environmental sensors, covering temperature, humidity, air quality, and noise."
+  }
+}
