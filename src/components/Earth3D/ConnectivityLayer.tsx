@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { speedTestService, NetworkAnalytics } from '../../lib/apis/speedtest'; // Assuming NetworkAnalytics is exported
-import { dataCollector, NetworkPerformanceData } from '../../lib/analytics/dataCollector'; // For data collected by DataCollector
+import { } from '../../lib/apis/speedtest'; // Assuming NetworkAnalytics is exported
+import { NetworkPerformanceData } from '../../lib/analytics/dataCollector'; // For data collected by DataCollector
 import { supabase } from '../../lib/supabase';
 
 interface ConnectivityLayerProps {
