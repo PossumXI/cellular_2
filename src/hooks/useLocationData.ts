@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LocationCell, RealtimeDataStream } from '../types';
+import { LocationCell, BlockchainMemory } from '../types';
 import { geminiService } from '../lib/apis/gemini';
 import { geocodingService } from '../lib/apis/geocoding';
 import { elevenLabsService } from '../lib/apis/elevenlabs';
@@ -69,11 +69,25 @@ export function useLocationData(coordinates: [number, number] | null) {
                 throw new Error('Basic location also failed');
               }
             } catch (basicError) {
-              console.warn('Basic geocoding also failed, using coordinate-based fallback:', basicError);
+              console.warn('Basic geocoding also failed, retrying with broader search:', basicError);
               
-              // Strategy 4: Coordinate-based identification
-              locationName = getLocationFromCoordinates(lat, lng);
-              console.log(`⚠️ Using coordinate-based location: "${locationName}"`);
+              // Strategy 4: Retry with broader search parameters
+              try {
+                const broaderLocation = await geocodingService.searchLocation(`${lat}, ${lng}`);
+                if (broaderLocation && broaderLocation.name) {
+                  locationName = broaderLocation.name;
+                  console.log(`✅ Broader search resolved: "${locationName}"`);
+                } else {
+                  throw new Error('Broader search failed');
+                }
+              } catch (broaderError) {
+                console.warn('Broader search failed, using coordinate-based fallback:', broaderError);
+                // Strategy 5: Coordinate-based identification as last resort
+                // Note: NASA API is not used here as it does not provide geocoding or location tracking services.
+                // NASA API in this project is used for imagery (EPIC) and other data, not for location resolution.
+                locationName = getLocationFromCoordinates(lat, lng);
+                console.log(`⚠️ Using coordinate-based location as last resort: "${locationName}"`);
+              }
             }
           }
         }
@@ -94,7 +108,20 @@ export function useLocationData(coordinates: [number, number] | null) {
         const voice = elevenLabsService.getLocationVoiceProfile(personality, locationName);
 
         // Get blockchain memory
-        const memory = await algorandService.getLocationMemory(`${lat}_${lng}`);
+        const memoryData = await algorandService.getLocationMemory(`${lat}_${lng}`);
+
+        // Ensure memory data matches BlockchainMemory type
+        const memory: BlockchainMemory = {
+          ...memoryData,
+          interactions: memoryData.interactions.map(interaction => ({
+            ...interaction,
+            type: interaction.type as 'voice' | 'text' | 'system'
+          })),
+          events: memoryData.events.map(event => ({
+            ...event,
+            type: event.type as 'weather' | 'social' | 'economic' | 'environmental' | 'connectivity'
+          }))
+        };
 
         // Create location cell with proper name
         const locationCell: LocationCell = {

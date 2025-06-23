@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Cpu, MessageCircle, Database, Loader, User, Crown, Search, Wifi, BarChart3, Brain, Users } from 'lucide-react';
+import { Globe, Loader, BarChart3 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { Vector3 } from 'three';
 
 import NeuralBackground from './components/NeuralBackground';
 import FloatingParticles from './components/FloatingParticles';
 import EnhancedEarth from './components/Earth3D/EnhancedEarth';
-import LocationMarker from './components/Earth3D/LocationMarker';
 import GoogleEarthControls from './components/Earth3D/GoogleEarthControls';
 import LocationPanel from './components/LocationPanel';
 import LocationSearch from './components/LocationSearch/LocationSearch';
@@ -21,7 +20,6 @@ import UserMenu from './components/UI/UserMenu';
 import BoltAttribution from './components/UI/BoltAttribution';
 import EnhancedAnalyticsDashboard from './components/Analytics/EnhancedAnalyticsDashboard';
 import EnhancedDeepMindDashboard from './components/AI/EnhancedDeepMindDashboard';
-import KaggleExportModal from './components/AI/KaggleExportModal';
 import PopulationInfoPanel from './components/Earth3D/PopulationInfoPanel';
 import WarZoneInfoPanel from './components/Earth3D/WarZoneInfoPanel';
 import DetailedEarthLayer from './components/Earth3D/DetailedEarthLayer';
@@ -31,7 +29,6 @@ import { useAuthStore } from './store/authStore';
 import { algorandService } from './lib/apis/algorand';
 import { authService } from './lib/auth/authService';
 import { cellularContract } from './lib/blockchain/contracts';
-import { geocodingService } from './lib/apis/geocoding';
 import { telefonicaGatewayService } from './lib/apis/telefonicaGateway';
 import { dataCollector } from './lib/analytics/dataCollector';
 import { enhancedDeepMindService } from './lib/ai/enhancedDeepMindService';
@@ -87,7 +84,7 @@ function App() {
   // const [selectedTable, setSelectedTable] = useState<string>('social_engagement_analytics'); // No longer on main panel
 
   // New Modals/Views
-  const [deepWikiModalOpen, setDeepWikiModalOpen] = useState(false);
+const [askDeepMindModalOpen, setAskDeepMindModalOpen] = useState(false);
   const [simulationCenterModalOpen, setSimulationCenterModalOpen] = useState(false);
 
   const { user, setUser, setLoading } = useAuthStore();
@@ -238,7 +235,7 @@ function App() {
   const handleLocationClick = async (coordinates: [number, number]) => {
     // Check if user needs to sign up for more interactions
     if (user) {
-      const { canInteract, remaining } = await authService.checkDailyLimit(user.id);
+      const { canInteract } = await authService.checkDailyLimit(user.id);
       
       if (!canInteract && user.subscription_tier === 'free') {
         setPricingModalOpen(true);
@@ -296,6 +293,8 @@ function App() {
 
   const handleClosePanel = () => {
     setSelectedCoordinates(null);
+    setCameraTarget(undefined);
+    setCurrentZoom(10);
   };
 
   const handleLoadingComplete = () => {
@@ -577,9 +576,9 @@ function App() {
             </button>
             <button 
               className="neural-button"
-              onClick={() => setDeepWikiModalOpen(true)} // New Action
+onClick={() => setAskDeepMindModalOpen(true)} // New Action
             >
-              🗣️ Ask DeepWiki
+🗣️ Ask DeepMind
             </button>
           </div>
           <div className="flex gap-4">
@@ -695,11 +694,11 @@ function App() {
       */}
 
       {/* Placeholder for new Modals - to be implemented later */}
-      {deepWikiModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center" onClick={() => setDeepWikiModalOpen(false)}>
+{askDeepMindModalOpen && (
+<div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center" onClick={() => setAskDeepMindModalOpen(false)}>
           <div className="bg-surface-deep p-8 rounded-lg text-white" onClick={(e) => e.stopPropagation()}>
-            DeepWiki Modal (To be implemented)
-            <button onClick={() => setDeepWikiModalOpen(false)} className="mt-4 p-2 bg-red-500 rounded">Close</button>
+Ask DeepMind Modal (To be implemented)
+<button onClick={() => setAskDeepMindModalOpen(false)} className="mt-4 p-2 bg-red-500 rounded">Close</button>
           </div>
         </div>
       )}

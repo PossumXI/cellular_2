@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, Clock, Star, Loader, Globe, Navigation } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Search, Clock, Star, Loader, Globe, Navigation } from 'lucide-react';
 import { geocodingService } from '../../lib/apis/geocoding';
 
 interface SearchResult {
@@ -98,11 +98,6 @@ export default function LocationSearch({ onLocationSelect, isVisible, onClose }:
         loc.country?.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
-      // If we have popular matches, show them immediately
-      if (popularMatches.length > 0) {
-        setResults(popularMatches);
-      }
-
       // Enhanced search with multiple results using Google Places API
       const places = await geocodingService.searchPlaces(searchQuery);
       
@@ -135,22 +130,22 @@ export default function LocationSearch({ onLocationSelect, isVisible, onClose }:
           })
         );
         
-        // Combine popular matches with API results, removing duplicates
-        const combinedResults = [...popularMatches];
-        searchResults.forEach(apiResult => {
+        // Combine API results with popular matches, prioritizing API results
+        const combinedResults = [...searchResults];
+        popularMatches.forEach(popular => {
           const isDuplicate = combinedResults.some(existing => 
-            Math.abs(existing.lat - apiResult.lat) < 0.01 && 
-            Math.abs(existing.lng - apiResult.lng) < 0.01
+            Math.abs(existing.lat - popular.lat) < 0.01 && 
+            Math.abs(existing.lng - popular.lng) < 0.01
           );
           if (!isDuplicate) {
-            combinedResults.push(apiResult);
+            combinedResults.push(popular);
           }
         });
         
         setResults(combinedResults.slice(0, 10));
         setError(null);
-      } else if (popularMatches.length === 0) {
-        // Fallback to single location search if no popular matches and no API results
+      } else {
+        // Fallback to single location search if no API results
         const result = await geocodingService.searchLocation(searchQuery);
         if (result) {
           // Enhance the single result name too
@@ -171,6 +166,10 @@ export default function LocationSearch({ onLocationSelect, isVisible, onClose }:
             type: 'location',
             formattedAddress: result.name
           }]);
+          setError(null);
+        } else if (popularMatches.length > 0) {
+          // Show popular matches as a last resort
+          setResults(popularMatches);
           setError(null);
         } else {
           // No results found
@@ -201,6 +200,7 @@ export default function LocationSearch({ onLocationSelect, isVisible, onClose }:
     setQuery('');
     setResults([]);
     setError(null);
+    setSelectedIndex(-1);
     onClose();
   };
 
