@@ -695,10 +695,10 @@ onClick={() => setAskDeepMindModalOpen(true)} // New Action
 
       {/* Placeholder for new Modals - to be implemented later */}
 {askDeepMindModalOpen && (
-<div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center" onClick={() => setAskDeepMindModalOpen(false)}>
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center" onClick={() => setAskDeepMindModalOpen(false)}>
           <div className="bg-surface-deep p-8 rounded-lg text-white" onClick={(e) => e.stopPropagation()}>
-Ask DeepMind Modal (To be implemented)
-<button onClick={() => setAskDeepMindModalOpen(false)} className="mt-4 p-2 bg-red-500 rounded">Close</button>
+            Ask DeepMind Modal (To be implemented)
+            <button onClick={() => setAskDeepMindModalOpen(false)} className="mt-4 p-2 bg-red-500 rounded">Close</button>
           </div>
         </div>
       )}
