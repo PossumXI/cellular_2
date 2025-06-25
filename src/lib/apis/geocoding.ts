@@ -1,12 +1,6 @@
 import { secureApiProxy } from './secureApiProxy';
-import { config } from '../config';
 
 export class GeocodingService {
-  private apiKey: string;
-  
-  constructor() {
-    this.apiKey = config.google.mapsApiKey;
-  }
   
   async reverseGeocode(lat: number, lng: number): Promise<string> {
     try {
@@ -19,11 +13,11 @@ export class GeocodingService {
       if (data.results && data.results.length > 0) {
         // Try to get city name from address components
         const result = data.results[0];
-        const cityComponent = result.address_components.find((component: any) =>
+        const cityComponent = result.address_components.find((component: { types: string[] }) =>
           component.types.includes('locality')
         );
         
-        const stateComponent = result.address_components.find((component: any) =>
+        const stateComponent = result.address_components.find((component: { types: string[] }) =>
           component.types.includes('administrative_area_level_1')
         );
         
@@ -47,6 +41,79 @@ export class GeocodingService {
     }
   }
 
+  // Helper method to extract location components
+  private extractLocationComponents(data: any): { cityName: string | null, stateName: string | null, pointOfInterest: string | null } {
+    let cityName = null;
+    let stateName = null;
+    let pointOfInterest = null;
+
+    for (const result of data.results) {
+      for (const component of result.address_components) {
+        if (component.types.includes('locality')) {
+          cityName = component.long_name;
+        }
+        if (component.types.includes('administrative_area_level_1')) {
+          stateName = component.short_name ?? component.long_name;
+        }
+        if (component.types.includes('point_of_interest') || component.types.includes('establishment')) {
+          pointOfInterest = component.long_name;
+        }
+      }
+    }
+
+    return { cityName, stateName, pointOfInterest };
+  }
+
+  // Helper method to find best match based on priority
+  private findBestMatch(data: any): { bestMatch: string | null, bestPriority: number } {
+    const priorityTypes = [
+      'point_of_interest',     // Specific landmark - highest priority
+      'establishment',         // Business or facility
+      'locality',              // City
+      'neighborhood',          // Neighborhood
+      'sublocality_level_1',   
+      'sublocality',
+      'administrative_area_level_2', // County
+      'administrative_area_level_1', // State/Province
+      'country'                // Least specific
+    ];
+
+    let bestMatch = null;
+    let bestPriority = 999;
+
+    for (const result of data.results) {
+      for (const component of result.address_components) {
+        for (let i = 0; i < priorityTypes.length; i++) {
+          if (component.types.includes(priorityTypes[i]) && i < bestPriority) {
+            bestMatch = component.long_name;
+            bestPriority = i;
+            break;
+          }
+        }
+      }
+    }
+
+    return { bestMatch, bestPriority };
+  }
+
+  // Helper method to build descriptive name
+  private buildDescriptiveName(cityName: string | null, stateName: string | null, pointOfInterest: string | null, bestMatch: string | null, bestPriority: number): string {
+    if (pointOfInterest) {
+      if (cityName) {
+        return `${pointOfInterest}, ${cityName}`;
+      }
+      return pointOfInterest;
+    } else if (cityName && stateName && bestPriority <= 2) {
+      return `${cityName}, ${stateName}`;
+    } else if (bestMatch) {
+      if (bestPriority <= 2 && stateName && bestMatch !== stateName) {
+        return `${bestMatch}, ${stateName}`;
+      }
+      return bestMatch;
+    }
+    return '';
+  }
+
   // Enhanced method to get detailed location name with multiple components
   async getDetailedLocationName(lat: number, lng: number): Promise<string> {
     try {
@@ -57,79 +124,25 @@ export class GeocodingService {
       });
       
       if (data.results && data.results.length > 0) {
-        // Priority order for location naming
-        const priorityTypes = [
-          'point_of_interest',     // Specific landmark - highest priority
-          'establishment',         // Business or facility
-          'locality',              // City
-          'neighborhood',          // Neighborhood
-          'sublocality_level_1',   
-          'sublocality',
-          'administrative_area_level_2', // County
-          'administrative_area_level_1', // State/Province
-          'country'                // Least specific
-        ];
+        const { cityName, stateName, pointOfInterest } = this.extractLocationComponents(data);
+        const { bestMatch, bestPriority } = this.findBestMatch(data);
+        const descriptiveName = this.buildDescriptiveName(cityName, stateName, pointOfInterest, bestMatch, bestPriority);
 
-        let bestMatch = null;
-        let bestPriority = 999;
-        let cityName = null;
-        let stateName = null;
-        let pointOfInterest = null;
-
-        // Find the best match and extract city/state info
-        for (const result of data.results) {
-          for (const component of result.address_components) {
-            // Extract city and state for combination
-            if (component.types.includes('locality')) {
-              cityName = component.long_name;
-            }
-            if (component.types.includes('administrative_area_level_1')) {
-              stateName = component.short_name || component.long_name;
-            }
-            if (component.types.includes('point_of_interest') || component.types.includes('establishment')) {
-              pointOfInterest = component.long_name;
-            }
-            
-            // Find best match based on priority
-            for (let i = 0; i < priorityTypes.length; i++) {
-              if (component.types.includes(priorityTypes[i]) && i < bestPriority) {
-                bestMatch = component.long_name;
-                bestPriority = i;
-                break;
-              }
-            }
-          }
-        }
-
-        // Build the most descriptive name
-        if (pointOfInterest) {
-          // If we have a specific point of interest, use it with the city
-          if (cityName) {
-            return `${pointOfInterest}, ${cityName}`;
-          }
-          return pointOfInterest;
-        } else if (cityName && stateName && bestPriority <= 2) {
-          // We have a city and state, use both
-          return `${cityName}, ${stateName}`;
-        } else if (bestMatch) {
-          // Use the best match we found
-          if (bestPriority <= 2 && stateName && bestMatch !== stateName) {
-            // City with state
-            return `${bestMatch}, ${stateName}`;
-          }
-          return bestMatch;
+        if (descriptiveName) {
+          return descriptiveName;
         }
 
         // Fallback to formatted address parsing
-        const formattedAddress = data.results[0].formatted_address;
-        const parts = formattedAddress.split(',').map(part => part.trim());
+        const formattedAddress = data.results[0]?.formatted_address ?? '';
+        const parts: string[] = formattedAddress.split(',').map((part: string) => part.trim());
         
         // Return the first meaningful part (not a number/postal code)
         for (const part of parts) {
-          if (!/^\d+/.test(part) && part.length > 2) {
+          if (typeof part === 'string' && part && !/^\d+/.test(part) && part.length > 2) {
             return part;
           }
         }
+        return '';
       }
       
       // Instead of throwing an error, fall back to basic reverse geocoding
@@ -155,16 +168,16 @@ export class GeocodingService {
       }
       
       const result = data.results[0];
-      const components = result.address_components;
+      const components = result?.address_components ?? [];
       
       const context = {
-        name: result.formatted_address.split(',')[0],
-        city: components.find((c: any) => c.types.includes('locality'))?.long_name,
-        state: components.find((c: any) => c.types.includes('administrative_area_level_1'))?.long_name,
-        country: components.find((c: any) => c.types.includes('country'))?.long_name,
-        neighborhood: components.find((c: any) => c.types.includes('neighborhood'))?.long_name,
-        pointOfInterest: components.find((c: any) => c.types.includes('point_of_interest'))?.long_name,
-        formattedAddress: result.formatted_address
+        name: result?.formatted_address?.split(',')[0] ?? 'Unknown Location',
+        city: components.find((c: { types: string[] }) => c.types.includes('locality'))?.long_name,
+        state: components.find((c: { types: string[] }) => c.types.includes('administrative_area_level_1'))?.long_name,
+        country: components.find((c: { types: string[] }) => c.types.includes('country'))?.long_name,
+        neighborhood: components.find((c: { types: string[] }) => c.types.includes('neighborhood'))?.long_name,
+        pointOfInterest: components.find((c: { types: string[] }) => c.types.includes('point_of_interest'))?.long_name,
+        formattedAddress: result?.formatted_address ?? 'Unknown Address'
       };
       
       return context;
@@ -179,7 +192,7 @@ export class GeocodingService {
     try {
       // Use secure API proxy instead of direct API call
       const data = await secureApiProxy.callGoogleMaps('geocode', {
-        address: query
+        address: query.trim()
       });
       
       if (data.results && data.results.length > 0) {
@@ -219,7 +232,7 @@ export class GeocodingService {
       if (data.results && data.results.length > 0) {
         return data.results.map((result: any) => {
           // Extract country from address components if available
-          const addressParts = result.formatted_address?.split(', ') || [];
+          const addressParts = result.formatted_address?.split(', ') ?? [];
           const country = addressParts.length > 0 ? addressParts[addressParts.length - 1] : undefined;
           
           return {

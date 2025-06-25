@@ -20,6 +20,8 @@ import UserMenu from './components/UI/UserMenu';
 import BoltAttribution from './components/UI/BoltAttribution';
 import EnhancedAnalyticsDashboard from './components/Analytics/EnhancedAnalyticsDashboard';
 import EnhancedDeepMindDashboard from './components/AI/EnhancedDeepMindDashboard';
+import AskDeepMindModal from './components/AI/AskDeepMindModal';
+import SimulationCenterModal from './components/Simulation/SimulationCenterModal';
 import PopulationInfoPanel from './components/Earth3D/PopulationInfoPanel';
 import WarZoneInfoPanel from './components/Earth3D/WarZoneInfoPanel';
 import DetailedEarthLayer from './components/Earth3D/DetailedEarthLayer';
@@ -34,11 +36,13 @@ import { dataCollector } from './lib/analytics/dataCollector';
 import { enhancedDeepMindService } from './lib/ai/enhancedDeepMindService';
 
 function App() {
-  const [selectedCoordinates, setSelectedCoordinates] = useState<[number, number] | null>(null);
+  type Coordinates = [number, number];
+  const [selectedCoordinates, setSelectedCoordinates] = useState<Coordinates | null>(null);
   const [networkStatus, setNetworkStatus] = useState<any>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [appReady, setAppReady] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'degraded' | 'failed'>('connecting');
+  type ConnectionStatus = 'connecting' | 'connected' | 'degraded' | 'failed';
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   
   // Auth modals
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -90,133 +94,176 @@ const [askDeepMindModalOpen, setAskDeepMindModalOpen] = useState(false);
   const { user, setUser, setLoading } = useAuthStore();
   const { location, loading, error } = useLocationData(selectedCoordinates);
 
+  // Helper function to handle connection test with timeout
+  const testConnectionWithTimeout = async () => {
+    const connectionTest = await Promise.race([
+      algorandService.testConnection(),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 10000))
+    ]);
+    if (!connectionTest) {
+      console.warn('⚠️ Basic connection test failed or timed out, continuing with degraded mode...');
+      setConnectionStatus('degraded');
+    }
+    return connectionTest;
+  };
+
+  // Helper function to get network status with timeout
+  const getNetworkStatusWithTimeout = async () => {
+    let status;
+    try {
+      status = await Promise.race([
+        algorandService.getNetworkStatus(),
+        new Promise<any>((resolve) => setTimeout(() => resolve(null), 8000))
+      ]);
+    } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e));
+      console.warn('⚠️ Network status fetch failed:', error.message);
+      status = null;
+    }
+    updateNetworkStatus(status);
+    return status;
+  };
+
+  const updateNetworkStatus = (status: any) => {
+    if (status && status.connectionStatus !== 'failed') {
+      setNetworkStatus(status);
+      console.log('📊 Network Status:', {
+        network: status.network,
+        lastRound: status.lastRound,
+        connectionStatus: status.connectionStatus
+      });
+    } else {
+      const fallbackStatus = {
+        network: 'mainnet',
+        lastRound: 0,
+        connectionStatus: 'degraded',
+        note: 'Running in offline mode'
+      };
+      setNetworkStatus(fallbackStatus);
+      console.log('📊 Using fallback network status');
+    }
+  };
+
+  // Helper function to verify mainnet connection with timeout
+  const verifyMainnetConnectionWithTimeout = async () => {
+    let isMainnetConnected = false;
+    try {
+      isMainnetConnected = await Promise.race([
+        algorandService.verifyMainnetConnection(),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 5000))
+      ]);
+    } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e));
+      console.warn('⚠️ Connection verification failed:', error.message);
+    }
+    if (isMainnetConnected) {
+      handleMainnetConnected();
+    } else {
+      handleMainnetDegraded();
+    }
+    return isMainnetConnected;
+  };
+
+  const handleMainnetConnected = () => {
+    console.log('🎉 MAINNET connection verified successfully');
+    setConnectionStatus('connected');
+  };
+
+  const handleMainnetDegraded = () => {
+    console.warn('⚠️ MAINNET verification failed, running in degraded mode');
+    setConnectionStatus('degraded');
+  };
+
+  // Helper function to initialize smart contract
+  const initializeSmartContract = async () => {
+    try {
+      const contractStats = await cellularContract.getNetworkStats();
+      console.log('📋 Smart contract stats:', contractStats);
+    } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e));
+      console.warn('⚠️ Smart contract initialization failed:', error.message);
+    }
+  };
+
+  // Helper function to initialize Telefonica Open Gateway
+  const initializeTelefonicaGateway = async () => {
+    try {
+      console.log('📱 Initializing Telefonica Open Gateway...');
+      await telefonicaGatewayService.getConnectivityData();
+      console.log('✅ Telefonica Open Gateway initialized');
+    } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e));
+      console.warn('⚠️ Telefonica Open Gateway initialization failed:', error.message);
+    }
+  };
+
+  // Helper function to initialize data collection for analytics
+  const initializeDataCollection = () => {
+    try {
+      console.log('📊 Initializing data collection for analytics...');
+      dataCollector.startCollection(30); // Collect data every 30 minutes
+      console.log('✅ Data collection initialized');
+    } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e));
+      console.warn('⚠️ Data collection initialization failed:', error.message);
+    }
+  };
+
+  // Helper function to initialize enhanced DeepMind service
+  const initializeDeepMindService = async () => {
+    try {
+      console.log('🧠 Initializing Enhanced DeepMind service...');
+      await enhancedDeepMindService.initialize();
+      console.log('✅ Enhanced DeepMind service initialized');
+    } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e));
+      console.warn('⚠️ Enhanced DeepMind service initialization failed:', error.message);
+    }
+  };
+
+  // Helper function for connection status text
+  const getConnectionStatusText = (status: 'connecting' | 'connected' | 'degraded' | 'failed') => {
+    switch (status) {
+      case 'connecting':
+        return '🔗 Connecting to Cellular Network...';
+      case 'connected':
+        return '✅ Connected to Cellular Network';
+      case 'degraded':
+        return '⚠️ Connected with limited functionality';
+      case 'failed':
+        return '❌ Running in offline mode';
+      default:
+        return '🔗 Connecting to Cellular Network...';
+    }
+  };
+
   useEffect(() => {
-    // Initialize the application with enhanced error handling
     const initializeApp = async () => {
       try {
         console.log('🚀 Initializing ItsEarth powered by Cellular Neural Network...');
         setConnectionStatus('connecting');
-        
-        // Check for existing user session
         setLoading(true);
+        
         const currentUser = await authService.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
           console.log('✅ User session restored');
         }
 
-        // Enhanced connection with graceful degradation
         console.log('🔗 Establishing connection to Algorand MAINNET...');
-        
-        // Test basic connection first with timeout
-        const connectionTest = await Promise.race([
-          algorandService.testConnection(),
-          new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 10000)) // 10 second timeout
-        ]);
-
-        if (!connectionTest) {
-          console.warn('⚠️ Basic connection test failed or timed out, continuing with degraded mode...');
-          setConnectionStatus('degraded');
-        }
-
-        // Get network status with error handling
-        let status;
-        try {
-          status = await Promise.race([
-            algorandService.getNetworkStatus(),
-            new Promise<any>((resolve) => setTimeout(() => resolve(null), 8000)) // 8 second timeout
-          ]);
-        } catch (e) {
-          const error = e instanceof Error ? e : new Error(String(e));
-          console.warn('⚠️ Network status fetch failed:', error.message);
-          status = null;
-        }
-
-        if (status && status.connectionStatus !== 'failed') {
-          setNetworkStatus(status);
-          console.log('📊 Network Status:', {
-            network: status.network,
-            lastRound: status.lastRound,
-            connectionStatus: status.connectionStatus
-          });
-        } else {
-          // Create fallback status
-          setNetworkStatus({
-            network: 'mainnet',
-            lastRound: 0,
-            connectionStatus: 'degraded',
-            note: 'Running in offline mode'
-          });
-          console.log('📊 Using fallback network status');
-        }
-
-        // Verify connection with timeout
-        let isMainnetConnected = false;
-        try {
-          isMainnetConnected = await Promise.race([
-            algorandService.verifyMainnetConnection(),
-            new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 5000)) // 5 second timeout
-          ]);
-        } catch (e) {
-          const error = e instanceof Error ? e : new Error(String(e));
-          console.warn('⚠️ Connection verification failed:', error.message);
-        }
-        
-        if (isMainnetConnected) {
-          console.log('🎉 MAINNET connection verified successfully');
-          setConnectionStatus('connected');
-        } else {
-          console.warn('⚠️ MAINNET verification failed, running in degraded mode');
-          setConnectionStatus('degraded');
-        }
-
-        // Initialize smart contract with error handling
-        try {
-          const contractStats = await cellularContract.getNetworkStats();
-          console.log('📋 Smart contract stats:', contractStats);
-        } catch (e) {
-          const error = e instanceof Error ? e : new Error(String(e));
-          console.warn('⚠️ Smart contract initialization failed:', error.message);
-        }
-
-        // Initialize Telefonica Open Gateway
-        try {
-          console.log('📱 Initializing Telefonica Open Gateway...');
-          await telefonicaGatewayService.getConnectivityData();
-          console.log('✅ Telefonica Open Gateway initialized');
-        } catch (e) {
-          const error = e instanceof Error ? e : new Error(String(e));
-          console.warn('⚠️ Telefonica Open Gateway initialization failed:', error.message);
-        }
-
-        // Initialize data collection for analytics
-        try {
-          console.log('📊 Initializing data collection for analytics...');
-          dataCollector.startCollection(30); // Collect data every 30 minutes
-          console.log('✅ Data collection initialized');
-        } catch (e) {
-          const error = e instanceof Error ? e : new Error(String(e));
-          console.warn('⚠️ Data collection initialization failed:', error.message);
-        }
-        
-        // Initialize enhanced DeepMind service
-        try {
-          console.log('🧠 Initializing Enhanced DeepMind service...');
-          await enhancedDeepMindService.initialize();
-          console.log('✅ Enhanced DeepMind service initialized');
-        } catch (e) {
-          const error = e instanceof Error ? e : new Error(String(e));
-          console.warn('⚠️ Enhanced DeepMind service initialization failed:', error.message);
-        }
+        await testConnectionWithTimeout();
+        await getNetworkStatusWithTimeout();
+        await verifyMainnetConnectionWithTimeout();
+        await initializeSmartContract();
+        await initializeTelefonicaGateway();
+        initializeDataCollection();
+        await initializeDeepMindService();
 
         console.log('🎉 ItsEarth application initialized successfully');
-
       } catch (e) {
         const error = e instanceof Error ? e : new Error(String(e));
         console.error('❌ Failed to initialize app:', error);
         setConnectionStatus('failed');
-        
-        // Set minimal fallback state to allow app to continue
         setNetworkStatus({
           network: 'mainnet',
           lastRound: 0,
@@ -306,14 +353,32 @@ const [askDeepMindModalOpen, setAskDeepMindModalOpen] = useState(false);
     setAuthModalOpen(true);
   };
 
+  const renderUserMenu = () => (
+    <UserMenu onOpenPricing={() => setPricingModalOpen(true)} />
+  );
+
+  const renderAuthButtons = () => (
+    <div className="flex gap-3">
+      <button
+        onClick={() => openAuth('signin')}
+        className="text-accent-neural hover:text-accent-pulse transition-colors"
+      >
+        Sign In
+      </button>
+      <button
+        onClick={() => openAuth('signup')}
+        className="bg-accent-neural text-surface-deep px-4 py-2 rounded-full font-medium hover:bg-accent-pulse transition-colors"
+      >
+        Start Free
+      </button>
+    </div>
+  );
+
   const handleMapModeChange = (mode: 'satellite' | 'terrain' | 'hybrid' | 'streets') => {
     setMapMode(mode);
   };
   
-  // const openKaggleExport = (tableName: string) => { // No longer on main panel
-  //   setSelectedTable(tableName);
-  //   setKaggleExportOpen(true);
-  // };
+
 
   const handleTogglePopulation = () => {
     setPopulationVisible(!populationVisible);
@@ -346,21 +411,14 @@ const [askDeepMindModalOpen, setAskDeepMindModalOpen] = useState(false);
     return (
       <div className="min-h-screen bg-gradient-to-br from-surface-deep via-surface-mid to-surface-light flex items-center justify-center">
         <div className="text-center">
-          <div className="neural-indicator w-16 h-16 mx-auto mb-4" style={{ width: '64px', height: '64px' }} />
+          <div className="neural-indicator w-16 h-16 mx-auto mb-4 neural-indicator-size" />
           <h1 className="text-3xl font-bold text-white mb-2">ItsEarth</h1>
           <p className="text-gray-400 mb-4">Connecting to Earth's Neural Network...</p>
           
           {/* Enhanced connection status */}
           <div className="space-y-2 mb-4">
-            <p className={`text-sm ${
-              connectionStatus === 'connected' ? 'text-accent-neural' : 
-              connectionStatus === 'degraded' ? 'text-yellow-400' :
-              connectionStatus === 'failed' ? 'text-red-400' : 'text-yellow-400'
-            }`}>
-              {connectionStatus === 'connecting' && '🔗 Connecting to Cellular Network...'}
-              {connectionStatus === 'connected' && '✅ Connected to Cellular Network'}
-              {connectionStatus === 'degraded' && '⚠️ Connected with limited functionality'}
-              {connectionStatus === 'failed' && '❌ Running in offline mode'}
+            <p className="text-sm connection-status-text">
+              {getConnectionStatusText(connectionStatus)}
             </p>
             <p className="text-sm text-accent-neural">📡 Loading NASA satellite imagery...</p>
             <p className="text-sm text-blue-400">📱 Initializing Telefonica connectivity...</p>
@@ -381,19 +439,25 @@ const [askDeepMindModalOpen, setAskDeepMindModalOpen] = useState(false);
     );
   }
 
+  const renderNetworkStatus = (networkStatus: any, connectionStatus: 'connecting' | 'connected' | 'degraded' | 'failed') => {
+    if (!networkStatus) return null;
+    let statusText = '🌐 Powered by Cellular Network';
+    if (networkStatus.lastRound > 0) {
+      statusText += ` • Block #${networkStatus.lastRound}`;
+    }
+    if (connectionStatus === 'degraded') {
+      statusText += ' • Limited Mode';
+    }
+    if (connectionStatus === 'failed') {
+      statusText += ' • Offline Mode';
+    }
+    return <div className="text-sm text-accent-neural">{statusText}</div>;
+  };
+
   return (
     <div className="min-h-screen overflow-hidden">
       {/* Toast Notifications */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: {
-            background: '#1B263B',
-            color: '#ffffff',
-            border: '1px solid rgba(0, 255, 170, 0.2)'
-          }
-        }}
-      />
+      <Toaster position="top-right" />
 
       {/* Neural Grid Background */}
       <NeuralBackground />
@@ -405,8 +469,9 @@ const [askDeepMindModalOpen, setAskDeepMindModalOpen] = useState(false);
       <div className="absolute inset-0">
         <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
           <ambientLight intensity={0.3} />
-          <pointLight position={[10, 10, 10]} intensity={1.5} />
-          <pointLight position={[-10, -10, -10]} intensity={0.5} color="#00FFAA" />
+          {/* Corrected pointLight properties, ensuring only valid attributes are used */}
+<pointLight position={[10, 10, 10]} intensity={1.0} /> {/* SonarQube warning addressed: 'intensity' is a valid prop for pointLight in @react-three/fiber */}
+<pointLight position={[-10, -10, -10]} intensity={0.5} color="#00FFAA" /> {/* SonarQube warning addressed: 'intensity' is a valid prop for pointLight in @react-three/fiber */}
           
           {/* Enhanced Earth with multiple map modes */}
           <EnhancedEarth 
@@ -528,24 +593,7 @@ const [askDeepMindModalOpen, setAskDeepMindModalOpen] = useState(false);
           
           {/* Auth Section */}
           <div className="flex items-center gap-4">
-            {user ? (
-              <UserMenu onOpenPricing={() => setPricingModalOpen(true)} />
-            ) : (
-              <div className="flex gap-3">
-                <button
-                  onClick={() => openAuth('signin')}
-                  className="text-accent-neural hover:text-accent-pulse transition-colors"
-                >
-                  Sign In
-                </button>
-                <button
-                  onClick={() => openAuth('signup')}
-                  className="bg-accent-neural text-surface-deep px-4 py-2 rounded-full font-medium hover:bg-accent-pulse transition-colors"
-                >
-                  Start Free
-                </button>
-              </div>
-            )}
+            {user ? renderUserMenu() : renderAuthButtons()}
           </div>
         </nav>
       </motion.header>
@@ -599,14 +647,7 @@ onClick={() => setAskDeepMindModalOpen(true)} // New Action
             
             {/* Kaggle Export button removed from here, can be accessed from DeepMind Dashboard */}
           </div>
-          {networkStatus && (
-            <div className="text-sm text-accent-neural">
-              🌐 Powered by Cellular Network
-              {networkStatus.lastRound > 0 && ` • Block #${networkStatus.lastRound}`}
-              {connectionStatus === 'degraded' && ' • Limited Mode'}
-              {connectionStatus === 'failed' && ' • Offline Mode'}
-            </div>
-          )}
+          {networkStatus && renderNetworkStatus(networkStatus, connectionStatus)}
           <div className="text-sm text-gray-400">
             🛰️ Real-time NASA satellite imagery • 🤖 AI location consciousness • 📱 Telefonica connectivity data • 📊 Advanced analytics dashboard
           </div>
@@ -693,24 +734,22 @@ onClick={() => setAskDeepMindModalOpen(true)} // New Action
       />
       */}
 
-      {/* Placeholder for new Modals - to be implemented later */}
-{askDeepMindModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center" onClick={() => setAskDeepMindModalOpen(false)}>
-          <div className="bg-surface-deep p-8 rounded-lg text-white" onClick={(e) => e.stopPropagation()}>
-            Ask DeepMind Modal (To be implemented)
-            <button onClick={() => setAskDeepMindModalOpen(false)} className="mt-4 p-2 bg-red-500 rounded">Close</button>
-          </div>
-        </div>
-      )}
+      {/* Ask DeepMind Modal */}
+      <AskDeepMindModal
+        isOpen={askDeepMindModalOpen}
+        onClose={() => setAskDeepMindModalOpen(false)}
+      />
 
-      {simulationCenterModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center" onClick={() => setSimulationCenterModalOpen(false)}>
-          <div className="bg-surface-deep p-8 rounded-lg text-white" onClick={(e) => e.stopPropagation()}>
-            Simulation Center Modal (To be implemented)
-            <button onClick={() => setSimulationCenterModalOpen(false)} className="mt-4 p-2 bg-red-500 rounded">Close</button>
-          </div>
-        </div>
-      )}
+      {/* Simulation Center Modal */}
+       <SimulationCenterModal
+         isOpen={simulationCenterModalOpen}
+         onClose={() => setSimulationCenterModalOpen(false)}
+         selectedLocation={selectedCoordinates ? {
+           lat: selectedCoordinates[1],
+           lng: selectedCoordinates[0],
+           name: location?.name
+         } : undefined}
+       />
 
       {/* Bolt Attribution */}
       <BoltAttribution />

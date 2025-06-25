@@ -70,5 +70,8 @@
   },
   "resolutions": {
     "brace-expansion": "^2.0.1"
+  },
+  "overrides": {
+    "lodash": "4.17.21"
   }
 }
